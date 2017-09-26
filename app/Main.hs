@@ -33,6 +33,7 @@ main = do
       ansList = csvReader ans
       marked = head ansList : (map (mark $ last ansList) $ tail ansList)
     writeFile ("./documents/" ++ file ++ "-result.csv") $ csvWriter marked
+    putStrLn $ "Done! -- See './documents/" ++ file ++ "-result.csv'"
     return ()
 
 -- 模範解答と照合して正答は "1"，誤答は "0"
