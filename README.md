@@ -21,7 +21,7 @@ $ stack build
 これが通ったら，
 ```
 $ stack exec gakuryoku-saiten-exe sample
-Done! -- See './documents/sample-result.csv'
+Done! -- See './documents/sample-result.csv' and './documents/sample-score.csv'
 ```
-で結果が CSV に出力されます．  
+で採点結果とスコアがそれぞれ CSV に出力されます．  
 入出力 CSV のフォーマットは `./documents/` 以下を参照してください．

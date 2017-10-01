@@ -1,40 +1,44 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Monad
 import System.Environment (getArgs)
 import System.IO
 
-
--- CSV フォーマット
--- No.,1,2,3,4,5
--- Okkey,a,b,c,d,d
--- right,a,b,c,d,e
-
--- ans :: String
--- "No.,1,2,3,4,5\nOkkey,a,b,c,d,d\nright,a,b,c,d,e"
-
--- ansList :: [[String]]
--- [["No.","1","2","3","4","5"]
--- ,["Okkey","a","b","c","d","d"]
--- ,["right","a","b","c","d","e"]]
-
--- marked :: [[String]]
--- [["No.","1","2","3","4","5"]
--- ,["Okkey","1","1","1","1","0"]
--- ,["right","1","1","1","1","1"]]
 
 main :: IO ()
 main = do
   file' <- getArgs
   let file = head file'
-  withFile ("./documents/" ++ file ++".csv") ReadMode $ \answer -> do
-    ans <- hGetContents answer
-    let
-      ansList = csvReader ans
-      marked = head ansList : (map (mark $ last ansList) $ tail ansList)
-    writeFile ("./documents/" ++ file ++ "-result.csv") $ csvWriter marked
-    putStrLn $ "Done! -- See './documents/" ++ file ++ "-result.csv'"
+  withFile ("./documents/" ++ file ++".csv") ReadMode $ \answers -> do
+    ans <- hGetContents answers
+    let answers = csvReader ans
+    when (exception $ tail answers) $ fail "Specified CSV file is invalid."
+    saiten file answers
     return ()
+
+saiten :: String -> [[String]] -> IO ()
+saiten file answers = do
+  let marked = head answers : (map (mark $ last answers) $ tail answers)
+  writeFile ("./documents/" ++ file ++ "-result.csv") $ csvWriter marked
+  writeFile ("./documents/" ++ file ++ "-score.csv") $ csvWriter $ ["Name", "Score"] : (map score $ tail marked)
+  putStrLn $ "Done! -- See './documents/" ++ file ++ "-result.csv' and './documents/" ++ file ++ "-score.csv'"
+  return ()
+
+
+-- 例外（CSV の答案部に "a" -- "e" 以外が含まれてる時）-> True
+exception :: [[String]] -> Bool
+exception answers
+  | 0 `elem` checked = True
+  | otherwise        = False
+  where
+    checked = map check answers :: [Integer]
+    check :: [String] -> Integer -- 正しい形式のリストなら1，おかしければ0
+    check answer
+      | let answer' = tail answer
+        in  filter (`elem` ["a", "b", "c", "d", "e"]) answer' == answer' = 1
+      | otherwise = 0
+
 
 -- 模範解答と照合して正答は "1"，誤答は "0"
 -- ["right","a","b","c","d","d"]
@@ -74,3 +78,9 @@ split p (x:xs)
       | p x       = ([], xs)
       | otherwise = (x : ys, zs)
       where (ys, zs) = split p xs
+
+-- 正答数を数え上げる
+-- ["Okkey","1","1","1","1","0"] -> ["Okkey", "4"]
+score :: [String] -> [String]
+score [] = ["0"]
+score (x : xs) = x : [show $ length $ filter (== "1") xs]
