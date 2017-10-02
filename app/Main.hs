@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Control.Monad
+import Control.Monad (when)
 import System.Environment (getArgs)
 import System.IO
 
@@ -9,78 +9,100 @@ import System.IO
 main :: IO ()
 main = do
   file' <- getArgs
+  -- コマンドライン引数からファイル名を取ってくる．
   let file = head file'
-  withFile ("./documents/" ++ file ++".csv") ReadMode $ \answers -> do
-    ans <- hGetContents answers
-    let answers = csvReader ans
-    when (exception $ tail answers) $ fail "Specified CSV file is invalid."
-    saiten file answers
+      -- 第1引数を抜き出す．
+  withFile ("./documents/" ++ file ++".csv") ReadMode $ \answers' -> do
+    -- () 内はファイルパス．
+    -- 指定したファイルを読み込み専用モードで開く．
+    ans <- hGetContents answers'
+    -- ファイルの中身を String として取ってくる．
+    let (num : answers) = csvReader ans :: [[String]]
+        -- CSV を配列化．
+    when (exception answers) $ fail "Specified CSV file is invalid."
+    -- 例外処理．不正なファイルはここで弾く．
+    let marked = num : (map (mark $ last answers) answers)
+        -- 配列化したものを採点．
+        scored = ["Name", "Score"] : (map score $ tail marked)
+        -- 一応点数も出す．
+    writeFile ("./documents/" ++ file ++ "-result.csv") $ csvWriter marked
+    -- 採点結果を新しいファイルに出力．
+    writeFile ("./documents/" ++ file ++ "-score.csv" ) $ csvWriter scored
+    -- 点数を新しいファイルに出力．
+    putStrLn $ "Done! -- See './documents/" ++ file ++ "-result.csv' and './documents/" ++ file ++ "-score.csv'"
+    -- 採点がうまくいったらコマンドラインにメッセージを表示．
     return ()
 
-saiten :: String -> [[String]] -> IO ()
-saiten file answers = do
-  let marked = head answers : (map (mark $ last answers) $ tail answers)
-  writeFile ("./documents/" ++ file ++ "-result.csv") $ csvWriter marked
-  writeFile ("./documents/" ++ file ++ "-score.csv") $ csvWriter $ ["Name", "Score"] : (map score $ tail marked)
-  putStrLn $ "Done! -- See './documents/" ++ file ++ "-result.csv' and './documents/" ++ file ++ "-score.csv'"
-  return ()
 
-
--- 例外（CSV の答案部に "a" -- "e" 以外が含まれてる時）-> True
+-- 例外（答案部に "a" -- "e" 以外が含まれてる時，問題 No. 以外が空の時）-> True
 exception :: [[String]] -> Bool
-exception answers
-  | 0 `elem` checked = True
-  | otherwise        = False
+exception [x] = True -- CSV が1行しかない時
+exception (num : answers)
+  | 0 `elem` map check answers = True -- 1人でも check が 0 だったら弾く．
+  | otherwise                  = False
   where
-    checked = map check answers :: [Integer]
-    check :: [String] -> Integer -- 正しい形式のリストなら1，おかしければ0
-    check answer
-      | let answer' = tail answer
-        in  filter (`elem` ["a", "b", "c", "d", "e"]) answer' == answer' = 1
+    check :: [String] -> Integer
+    -- 各人の答案に "a" -- "e" 以外が含まれてるかどうかチェック．
+    -- 含まれていれば 0 含まれていなければ 1
+    check [] = 0
+    check (name : answer)
+      | filter (`notElem` ["a", "b", "c", "d", "e"]) answer == [] = 1
+        -- ["a", "b", "c", "d", "e"] のどれにもに一致しないものを抽出．
+        -- 1つもなければ 1
       | otherwise = 0
 
 
--- 模範解答と照合して正答は "1"，誤答は "0"
--- ["right","a","b","c","d","d"]
--- ["Okkey","a","b","c","d","d"] -> ["Okkey","1","1","1","1","0"]
+-- 採点部分
+-- ["right","a","b","c","d","d"] ["Okkey","a","b","c","d","d"]
+-- -> ["Okkey","1","1","1","1","0"]
 mark :: [String] -> [String] -> [String]
-mark rightAnswer answer = head answer : zipWith check (tail rightAnswer) (tail answer)
+mark (right : rightAnswer) (name : answer) = name : zipWith check rightAnswer answer
+-- 正答と1人の答案を受け取り，各問題の解答が正答に一致しているかをチェック．
   where
     check :: String -> String -> String
     check r a
-      | r == a    = "1"
-      | otherwise = "0"
+      | r == a    = "1" -- 正答
+      | otherwise = "0" -- 誤答
 
--- CSV をリスト化
+
+-- CSV 操作
+-- CSV -> 配列
 csvReader :: String -> [[String]]
 csvReader = map csv2List . lines
+            -- lines は String を改行文字で区切って配列化する関数．
 
--- リストを CSV 化
-csvWriter :: [[String]] -> String
-csvWriter = unlines . map list2Csv
-
--- 最初の "," で分割
+-- 文字列をカンマで区切って配列化
 csv2List :: String -> [String]
 csv2List [] = []
-csv2List l = h : csv2List i
+csv2List l = h : csv2List t
   where
-    (h, i) = split (\x -> x == ',') l
+    (h, t) = split (\x -> x == ',') l
+
+-- 述語 p を最初に満たす地点でリストを前後に分割
+split :: (a -> Bool) -> [a] -> ([a], [a])
+split _ [] = ([], [])
+split p (x : xs)
+      | p x       = ([], xs)
+        -- 先頭の要素が述語を満たすかチェック．
+        -- 述語を満たす要素は出力しないから []
+      | otherwise = (x : ys, zs) -- 述語を満たさない要素は左側へ．
+      where (ys, zs) = split p xs
+
+
+-- 配列 -> CSV
+csvWriter :: [[String]] -> String
+csvWriter = unlines . map list2Csv
 
 -- ["Okkey","a","b","c","d","d"] -> "Okkey,a,b,c,d,d"
 list2Csv :: [String] -> String
 list2Csv [] = []
-list2Csv xs = foldl1 (++) $ head xs : (map ("," ++) $ tail xs)
+list2Csv (x : xs) = concat $ x : (map ("," ++) xs)
+                    -- 先頭以外の各要素の頭に "," を付けて，全部つなげる．
 
--- リストを述語 p を満たす地点で分割
-split :: (a -> Bool) -> [a] -> ([a], [a])
-split _ [] = ([], [])
-split p (x:xs)
-      | p x       = ([], xs)
-      | otherwise = (x : ys, zs)
-      where (ys, zs) = split p xs
 
--- 正答数を数え上げる
+-- 正答数の数え上げ
 -- ["Okkey","1","1","1","1","0"] -> ["Okkey", "4"]
 score :: [String] -> [String]
-score [] = ["0"]
-score (x : xs) = x : [show $ length $ filter (== "1") xs]
+score [] = ["No data"]
+score (name : xs) = name : [show $ length $ filter (== "1") xs]
+                    -- "1" を抽出して，その長さが正答数．
