@@ -37,7 +37,7 @@ main = do
 -- 例外（答案部に "a" -- "e" 以外が含まれてる時，問題 No. 以外が空の時）-> True
 exception :: [[String]] -> Bool
 exception [x] = True -- CSV が1行しかない時
-exception (num : answers)
+exception answers
   | 0 `elem` map check answers = True -- 1人でも check が 0 だったら弾く．
   | otherwise                  = False
   where
@@ -68,13 +68,13 @@ mark (right : rightAnswer) (name : answer) = name : zipWith check rightAnswer an
 -- CSV 操作
 -- CSV -> 配列
 csvReader :: String -> [[String]]
-csvReader = map csv2List . lines
+csvReader = map splitByCommas . lines
             -- lines は String を改行文字で区切って配列化する関数．
 
 -- 文字列をカンマで区切って配列化
-csv2List :: String -> [String]
-csv2List [] = []
-csv2List l = h : csv2List t
+splitByCommas :: String -> [String]
+splitByCommas [] = []
+splitByCommas l = h : splitByCommas t
   where
     (h, t) = split (\x -> x == ',') l
 
@@ -91,12 +91,12 @@ split p (x : xs)
 
 -- 配列 -> CSV
 csvWriter :: [[String]] -> String
-csvWriter = unlines . map list2Csv
+csvWriter = unlines . map concatByCommas
 
 -- ["Okkey","a","b","c","d","d"] -> "Okkey,a,b,c,d,d"
-list2Csv :: [String] -> String
-list2Csv [] = []
-list2Csv (x : xs) = concat $ x : (map ("," ++) xs)
+concatByCommas :: [String] -> String
+concatByCommas [] = []
+concatByCommas (x : xs) = concat $ x : (map ("," ++) xs)
                     -- 先頭以外の各要素の頭に "," を付けて，全部つなげる．
 
 
