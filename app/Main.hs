@@ -98,6 +98,7 @@ concatByCommas [] = []
 concatByCommas (x : xs) = concat $ x : (map ("," ++) xs)
                     -- 先頭以外の各要素の頭に "," を付けて，全部つなげる．
 
+
 -- 正答数の数え上げ
 -- ["Okkey","1","1","1","1","0"] -> ["Okkey", "4"]
 score :: [String] -> [String]

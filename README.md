@@ -7,7 +7,7 @@
 ## How to use?
 
 Haskell のビルドツール Stack が必要です．  
-<a href="https://docs.haskellstack.org/en/stable/README/" target="_blank">公式</a> に従ってインストールしてください．  
+[公式](https://docs.haskellstack.org/en/stable/README/)に従ってインストールしてください．  
 Stack が入ったら，次の手順でインストール・ビルドします．
 
 ```
