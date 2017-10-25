@@ -34,7 +34,7 @@ main = do
     return ()
 
 
--- 例外（答案部に "a" -- "e" 以外が含まれてる時，問題 No. 以外が空の時）-> True
+-- 例外（答案部に "a" -- "e" 以外が含まれてる時，問題 No. 以外が空の時）-> True 
 exception :: [[String]] -> Bool
 exception [x] = True -- CSV が1行しかない時
 exception answers
