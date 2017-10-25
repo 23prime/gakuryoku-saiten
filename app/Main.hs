@@ -17,7 +17,7 @@ main = do
     -- 指定したファイルを読み込み専用モードで開く．
     ans <- hGetContents answers'
     -- ファイルの中身を String として取ってくる．
-    let (num : answers) = csvReader ans :: [[String]]
+    let (num : answers) = csvReader ans
         -- CSV を配列化．
     when (exception answers) $ fail "Specified CSV file is invalid."
     -- 例外処理．不正なファイルはここで弾く．
@@ -69,14 +69,13 @@ mark (right : rightAnswer) (name : answer) = name : zipWith check rightAnswer an
 -- CSV -> 配列
 csvReader :: String -> [[String]]
 csvReader = map splitByCommas . lines
-            -- lines は String を改行文字で区切って配列化する関数．
 
 -- 文字列をカンマで区切って配列化
 splitByCommas :: String -> [String]
 splitByCommas [] = []
-splitByCommas l = h : splitByCommas t
+splitByCommas line = beforeComma : splitByCommas other
   where
-    (h, t) = split (\x -> x == ',') l
+    (beforeComma, other) = split (== ',') line
 
 -- 述語 p を最初に満たす地点でリストを前後に分割
 split :: (a -> Bool) -> [a] -> ([a], [a])
@@ -98,7 +97,6 @@ concatByCommas :: [String] -> String
 concatByCommas [] = []
 concatByCommas (x : xs) = concat $ x : (map ("," ++) xs)
                     -- 先頭以外の各要素の頭に "," を付けて，全部つなげる．
-
 
 -- 正答数の数え上げ
 -- ["Okkey","1","1","1","1","0"] -> ["Okkey", "4"]
